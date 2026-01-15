@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Verify Neovim installation
+        run: nvim --version
+
+      - name: Install LuaRocks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+
+      - name: Install Busted
+        run: sudo luarocks install busted
+
+      - name: Run tests
+        run: busted --verbose

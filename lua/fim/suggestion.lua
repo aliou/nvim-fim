@@ -1,0 +1,161 @@
+-- Suggestion state management for nvim-fim
+-- Handles current suggestion and request tracking
+
+local render = require('fim.render')
+local config = require('fim.config')
+
+local M = {}
+
+---@class SuggestionState
+---@field suggestion string|nil Current suggestion text
+---@field cursor_pos {line:number, col:number} Position when requested
+---@field request_id number Incremented per request, for stale detection
+---@field bufnr number Buffer where suggestion is active
+
+--- Current suggestion state
+M.state = {
+  suggestion = nil,
+  cursor_pos = nil,
+  request_id = 0,
+  bufnr = nil,
+}
+
+--- Setup suggestion module
+function M.setup()
+  -- Clear state on buffer change
+  vim.api.nvim_create_autocmd({"BufLeave"}, {
+    group = vim.api.nvim_create_augroup("FimSuggestion", { clear = true }),
+    callback = function()
+      M.clear_suggestion()
+    end
+  })
+end
+
+--- Request a completion from the active provider
+---@param ctx {prefix:string, suffix:string, cursor:{line:number, col:number}} Context for request
+function M.request_completion(ctx)
+  -- Get active provider
+  local providers = require('fim.providers')
+  local provider = providers.get(config.options.provider)
+  
+  if not provider then
+    return
+  end
+  
+  -- Increment request ID to track stale responses
+  M.state.request_id = M.state.request_id + 1
+  local current_request_id = M.state.request_id
+  
+  -- Store cursor position for validation
+  M.state.cursor_pos = ctx.cursor
+  M.state.bufnr = vim.api.nvim_get_current_buf()
+  
+  -- Make provider request
+  provider.request_completion(ctx.prefix, ctx.suffix, function(response, err)
+    -- Check if this response is stale
+    if current_request_id ~= M.state.request_id then
+      return
+    end
+    
+    -- Check if we're still in insert mode
+    if vim.fn.mode() ~= 'i' then
+      M.clear_suggestion()
+      return
+    end
+    
+    -- Check if cursor position changed
+    local current_cursor = vim.api.nvim_win_get_cursor(0)
+    if current_cursor[1] - 1 ~= ctx.cursor.line or current_cursor[2] ~= ctx.cursor.col then
+      M.clear_suggestion()
+      return
+    end
+    
+    if err then
+      return
+    end
+    
+    -- Extract completion from response
+    local completion = response.choices[1].message.content
+    if not completion or completion == "" then
+      M.clear_suggestion()
+      return
+    end
+    
+    -- Store and render suggestion
+    M.state.suggestion = completion
+    render.render_suggestion(completion)
+  end)
+end
+
+--- Clear the current suggestion
+function M.clear_suggestion()
+  M.state.suggestion = nil
+  M.state.cursor_pos = nil
+  M.state.bufnr = nil
+  render.clear_suggestion()
+end
+
+--- Accept the current suggestion
+function M.accept_suggestion()
+  if not M.state.suggestion or M.state.suggestion == "" then return end
+  
+  -- Insert the full suggestion
+  vim.api.nvim_put(vim.split(M.state.suggestion, "\n", true), "c", true, true)
+  M.clear_suggestion()
+end
+
+--- Accept the current suggestion up to the next word boundary
+function M.accept_word()
+  if not M.state.suggestion or M.state.suggestion == "" then return end
+  
+  -- Find first word boundary
+  local word_end = M.state.suggestion:find("[%s%p]")
+  if not word_end then
+    -- No word boundary found, accept entire suggestion
+    M.accept_suggestion()
+    return
+  end
+  
+  -- Insert up to word boundary
+  local accepted = M.state.suggestion:sub(1, word_end)
+  local remaining = M.state.suggestion:sub(word_end + 1)
+  
+  vim.api.nvim_put(vim.split(accepted, "\n", true), "c", true, true)
+  
+  -- Update suggestion with remaining text
+  M.state.suggestion = remaining
+  if remaining == "" then
+    M.clear_suggestion()
+  else
+    render.render_suggestion(remaining)
+  end
+end
+
+--- Accept the current suggestion up to the end of the line
+function M.accept_line()
+  if not M.state.suggestion or M.state.suggestion == "" then return end
+  
+  -- Find first newline
+  local line_end = M.state.suggestion:find("\n")
+  if not line_end then
+    -- No newline found, accept entire suggestion
+    M.accept_suggestion()
+    return
+  end
+  
+  -- Insert up to newline
+  local accepted = M.state.suggestion:sub(1, line_end - 1)
+  local remaining = M.state.suggestion:sub(line_end + 1)
+  
+  vim.api.nvim_put(vim.split(accepted, "\n", true), "c", true, true)
+  
+  -- Update suggestion with remaining text
+  M.state.suggestion = remaining
+  if remaining == "" then
+    M.clear_suggestion()
+  else
+    render.render_suggestion(remaining)
+  end
+end
+
+return M

@@ -1,0 +1,8 @@
+return {
+  _all = {
+    lua = "./test/nvim-shim",
+    lpath = "./lua/?.lua;./lua/?/init.lua",
+    ROOT = {"./test/spec/"},
+    pattern = "_spec%.lua$",
+  },
+}

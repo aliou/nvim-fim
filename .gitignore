@@ -1,0 +1,5 @@
+# Pi CLI tool directory
+.pi/
+
+# Test data directories
+test/xdg/

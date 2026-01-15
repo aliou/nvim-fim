@@ -1,0 +1,5 @@
+#!/bin/sh
+export XDG_CONFIG_HOME="$(pwd)/test/xdg/config"
+export XDG_DATA_HOME="$(pwd)/test/xdg/data"
+export XDG_STATE_HOME="$(pwd)/test/xdg/state"
+exec nvim --headless -u NONE --noplugin -l "$@"
