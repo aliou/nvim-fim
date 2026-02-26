@@ -58,7 +58,7 @@ function M.setup_buffer_keymaps()
   -- Trigger completion manually
   if config.options.keymaps.trigger then
     vim.keymap.set('i', config.options.keymaps.trigger, function()
-      require('codestral').trigger_completion()
+      require('fim').trigger_completion()
     end, opts)
   end
 end

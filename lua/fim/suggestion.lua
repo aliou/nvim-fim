@@ -71,6 +71,7 @@ function M.request_completion(ctx)
     end
     
     if err then
+      vim.notify_once("nvim-fim: " .. err, vim.log.levels.WARN)
       return
     end
     

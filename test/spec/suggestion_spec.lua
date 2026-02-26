@@ -72,6 +72,38 @@ describe("fim.suggestion", function()
       assert.equals("}", mock_provider.last_call.suffix)
     end)
 
+    it("should call vim.notify_once on provider error", function()
+      local notify_calls = {}
+      vim.notify_once = function(msg, level)
+        table.insert(notify_calls, { msg = msg, level = level })
+      end
+      
+      -- Mock insert mode and cursor position
+      local orig_mode = vim.fn.mode
+      vim.fn.mode = function() return 'i' end
+      local orig_get_cursor = vim.api.nvim_win_get_cursor
+      vim.api.nvim_win_get_cursor = function() return { 1, 4 } end
+      
+      -- Use synchronous mock for this test
+      mock_provider.request_completion = function(prefix, suffix, callback)
+        callback(nil, "mock error")
+      end
+      
+      suggestion.request_completion({
+        prefix = "test",
+        suffix = "",
+        cursor = { line = 0, col = 4 }
+      })
+      
+      -- Restore mocks
+      vim.fn.mode = orig_mode
+      vim.api.nvim_win_get_cursor = orig_get_cursor
+      
+      assert.equals(1, #notify_calls)
+      assert.is_true(notify_calls[1].msg:find("mock error") ~= nil)
+      assert.equals(vim.log.levels.WARN, notify_calls[1].level)
+    end)
+
     it("should increment request_id on each call", function()
       local initial_id = suggestion.state.request_id
       
