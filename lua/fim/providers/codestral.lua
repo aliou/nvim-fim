@@ -89,15 +89,15 @@ function M.validate_config(provider_config)
   if not provider_config then
     return false, "codestral provider config is required"
   end
-  
+
   if type(provider_config.api_key_provider) ~= "function" then
     return false, "codestral.api_key_provider must be a function"
   end
-  
+
   if not provider_config.endpoint or provider_config.endpoint == "" then
     return false, "codestral.endpoint must be configured"
   end
-  
+
   return true, nil
 end
 
@@ -108,7 +108,7 @@ end
 function M.request_completion(prefix, suffix, callback)
   local config = require('fim.config')
   local provider_config = config.options.codestral
-  
+
   -- Get API key
   local ok_key, api_key = pcall(provider_config.api_key_provider)
   if not ok_key then
@@ -120,7 +120,7 @@ function M.request_completion(prefix, suffix, callback)
     callback(nil, "API key not configured")
     return
   end
-  
+
   -- Prepare request body
   local body = {
     model = provider_config.model or "codestral-latest",
@@ -129,7 +129,7 @@ function M.request_completion(prefix, suffix, callback)
     max_tokens = provider_config.max_tokens or 256,
     stop = provider_config.stop,
   }
-  
+
   -- Make HTTP request
   local ok, err = pcall(function()
     vim.system({
@@ -146,30 +146,30 @@ function M.request_completion(prefix, suffix, callback)
           callback(nil, "HTTP request failed: " .. (obj.stderr or "unknown error"))
           return
         end
-        
+
         local ok, response = pcall(vim.json.decode, obj.stdout)
         if not ok then
           callback(nil, "Failed to parse JSON response")
           return
         end
-        
+
         -- Check for API errors
         if response.error then
           callback(nil, "API error: " .. (response.error.message or "unknown error"))
           return
         end
-        
+
         -- Validate response structure
         if not response.choices or #response.choices == 0 then
           callback(nil, "No completions in response")
           return
         end
-        
+
         callback(response, nil)
       end)
     end)
   end)
-  
+
   if not ok then
     callback(nil, "Failed to make request: " .. err)
   end
