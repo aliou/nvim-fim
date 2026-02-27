@@ -1,4 +1,4 @@
--- Ghost text rendering for nvim-codestral
+-- Ghost text rendering for nvim-fim
 -- Uses extmarks to display inline suggestions
 
 local config = require('fim.config')
