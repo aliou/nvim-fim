@@ -18,7 +18,7 @@ M.defaults = {
   
   -- Codestral provider defaults
   codestral = {
-    -- Default: read from ~/.config/nvim/codestral/api_key
+    -- Default: read from ~/.local/share/nvim/fim/codestral/api_key
     -- Users can override with custom function or env var
     api_key_provider = function()
       local codestral = require('fim.providers.codestral')

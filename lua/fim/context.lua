@@ -1,4 +1,4 @@
--- Context extraction for nvim-codestral
+-- Context extraction for nvim-fim
 -- Extracts prefix and suffix around cursor for FIM requests
 
 local config = require('fim.config')

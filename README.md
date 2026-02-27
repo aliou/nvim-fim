@@ -124,20 +124,28 @@ Just create this file with your key, or use `:FimLogin` to set it up.
 
 ## Usage
 
+### Default keymaps
+
 - `<Tab>`: Accept full suggestion
 - `<C-Right>`: Accept next word
-- `<C-e>`: Accept to end of line  
+- `<C-e>`: Accept to end of line
 - `<C-]>`: Dismiss suggestion
 - `<C-Space>`: Trigger completion manually
+
+Set any keymap to `false` in `keymaps` to disable it.
+
+### Commands
+
+- `:FimLogin`: Save your provider API key (currently Codestral)
 
 ## How It Works
 
 ```
 Type in insert mode
   ↓
-Debounced trigger (50ms)
+Debounced trigger (50ms, insert mode only, skipped when popup menu is visible)
   ↓
-Extract context (prefix/suffix around cursor)
+Extract context (prefix/suffix around cursor, unless filetype is disabled)
   ↓
 Request completion from active provider
   ↓
