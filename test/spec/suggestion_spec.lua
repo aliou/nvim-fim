@@ -154,6 +154,39 @@ describe("fim.suggestion", function()
     end)
   end)
 
+  describe("strip_suffix_dup", function()
+    it("should strip trailing text that matches text-after-cursor", function()
+      -- Simulate: cursor inside foo(), text_after = ")"
+      -- Suggestion includes the closing paren: "bar, )"
+      assert.equals("bar, ", suggestion.strip_suffix_dup("bar, )", ")"))
+    end)
+
+    it("should strip longer suffix matches", function()
+      -- cursor before ", baz)", suggestion includes it
+      assert.equals("bar", suggestion.strip_suffix_dup("bar, baz)", ", baz)"))
+    end)
+
+    it("should not strip when suffix does not match", function()
+      assert.equals("bar; baz)", suggestion.strip_suffix_dup("bar; baz)", ", qux)"))
+    end)
+
+    it("should not strip when suggestion is shorter than text-after", function()
+      assert.equals("ab", suggestion.strip_suffix_dup("ab", "abcdef"))
+    end)
+
+    it("should return unchanged when text-after-cursor is empty", function()
+      assert.equals("hello world", suggestion.strip_suffix_dup("hello world", ""))
+    end)
+
+    it("should return unchanged when first line is empty", function()
+      assert.equals("", suggestion.strip_suffix_dup("", ")"))
+    end)
+
+    it("should handle exact match (entire line is suffix)", function()
+      assert.equals("", suggestion.strip_suffix_dup(")", ")"))
+    end)
+  end)
+
   describe("accept_suggestion", function()
     it("should do nothing if no suggestion", function()
       suggestion.state.suggestion = nil

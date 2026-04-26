@@ -96,19 +96,57 @@ function M.clear_suggestion()
   render.clear_suggestion()
 end
 
+--- Strip suffix duplication from suggestion first line.
+--- Some FIM models include text-after-cursor in their completion.
+--- If the first line of the suggestion ends with text-after-cursor, strip it.
+---@param first_line string First line of the suggestion
+---@param text_after_cursor string Text in the buffer after the cursor
+---@return string stripped_line
+function M.strip_suffix_dup(first_line, text_after_cursor)
+  if text_after_cursor == "" or first_line == "" or #first_line < #text_after_cursor then
+    return first_line
+  end
+  if first_line:sub(#first_line - #text_after_cursor + 1) == text_after_cursor then
+    return first_line:sub(1, #first_line - #text_after_cursor)
+  end
+  return first_line
+end
+
 --- Accept the current suggestion
 function M.accept_suggestion()
   if not M.state.suggestion or M.state.suggestion == "" then return end
-  
-  -- Insert the full suggestion
-  vim.api.nvim_put(vim.split(M.state.suggestion, "\n", true), "c", true, true)
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1  -- 0-based
+  local col = cursor[2]
+
+  local lines = vim.split(M.state.suggestion, "\n", true)
+
+  -- Strip suffix duplication: some FIM models include text after cursor
+  -- in their completion. If first line ends with text-after-cursor, strip it.
+  local text_after = vim.api.nvim_buf_get_text(bufnr, line, col, line, -1, {})[1] or ""
+  lines[1] = M.strip_suffix_dup(lines[1], text_after)
+
+  -- Use nvim_buf_set_text for reliable cursor positioning in insert mode
+  -- nvim_put can insert at wrong position when in insert mode
+  vim.api.nvim_buf_set_text(bufnr, line, col, line, col, lines)
+
+  -- Move cursor to end of inserted text
+  if #lines == 1 then
+    vim.api.nvim_win_set_cursor(0, { line + 1, col + #lines[1] })
+  else
+    local last_line = lines[#lines]
+    vim.api.nvim_win_set_cursor(0, { line + #lines, #last_line })
+  end
+
   M.clear_suggestion()
 end
 
 --- Accept the current suggestion up to the next word boundary
 function M.accept_word()
   if not M.state.suggestion or M.state.suggestion == "" then return end
-  
+
   -- Find first word boundary
   local word_end = M.state.suggestion:find("[%s%p]")
   if not word_end then
@@ -116,13 +154,27 @@ function M.accept_word()
     M.accept_suggestion()
     return
   end
-  
-  -- Insert up to word boundary
+
+  -- Insert up to word boundary using nvim_buf_set_text
   local accepted = M.state.suggestion:sub(1, word_end)
   local remaining = M.state.suggestion:sub(word_end + 1)
-  
-  vim.api.nvim_put(vim.split(accepted, "\n", true), "c", true, true)
-  
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1
+  local col = cursor[2]
+
+  local accepted_lines = vim.split(accepted, "\n", true)
+  vim.api.nvim_buf_set_text(bufnr, line, col, line, col, accepted_lines)
+
+  -- Move cursor to end of inserted text
+  if #accepted_lines == 1 then
+    vim.api.nvim_win_set_cursor(0, { line + 1, col + #accepted_lines[1] })
+  else
+    local last_line = accepted_lines[#accepted_lines]
+    vim.api.nvim_win_set_cursor(0, { line + #accepted_lines, #last_line })
+  end
+
   -- Update suggestion with remaining text
   M.state.suggestion = remaining
   if remaining == "" then
@@ -135,7 +187,7 @@ end
 --- Accept the current suggestion up to the end of the line
 function M.accept_line()
   if not M.state.suggestion or M.state.suggestion == "" then return end
-  
+
   -- Find first newline
   local line_end = M.state.suggestion:find("\n")
   if not line_end then
@@ -143,13 +195,19 @@ function M.accept_line()
     M.accept_suggestion()
     return
   end
-  
-  -- Insert up to newline
+
+  -- Insert up to newline using nvim_buf_set_text
   local accepted = M.state.suggestion:sub(1, line_end - 1)
   local remaining = M.state.suggestion:sub(line_end + 1)
-  
-  vim.api.nvim_put(vim.split(accepted, "\n", true), "c", true, true)
-  
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1
+  local col = cursor[2]
+
+  vim.api.nvim_buf_set_text(bufnr, line, col, line, col, { accepted })
+  vim.api.nvim_win_set_cursor(0, { line + 1, col + #accepted })
+
   -- Update suggestion with remaining text
   M.state.suggestion = remaining
   if remaining == "" then
