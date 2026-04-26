@@ -9,7 +9,7 @@ local keymaps = require('fim.keymaps')
 
 local M = {}
 
-M.version = "0.1.0"
+M.version = "0.1.1"
 
 --- Setup the plugin with user configuration
 ---@param user_config table User configuration
