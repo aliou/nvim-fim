@@ -1,4 +1,4 @@
--- Keymap handling for nvim-codestral
+-- Keymap handling for nvim-fim
 -- Sets up keymaps for accepting/dismissing suggestions
 
 local config = require('fim.config')
